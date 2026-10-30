@@ -13,10 +13,12 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAppRouteRouteImport } from './routes/_authenticated/_app/route'
+import { Route as AuthenticatedAppAjustesRouteImport } from './routes/_authenticated/_app/ajustes'
 import { Route as AuthenticatedAppInicioRouteImport } from './routes/_authenticated/_app/inicio'
 import { Route as AuthenticatedAppNovaNotaRouteImport } from './routes/_authenticated/_app/nova-nota'
 import { Route as AuthenticatedAppCaixinhasIndexRouteImport } from './routes/_authenticated/_app/caixinhas.index'
 import { Route as AuthenticatedAppCaixinhasMesRouteImport } from './routes/_authenticated/_app/caixinhas.$mes'
+import { Route as AuthenticatedAppNotasIdRouteImport } from './routes/_authenticated/_app/notas.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -35,6 +37,11 @@ const AuthRoute = AuthRouteImport.update({
 const AuthenticatedAppRouteRoute = AuthenticatedAppRouteRouteImport.update({
   id: '/_app',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAppAjustesRoute = AuthenticatedAppAjustesRouteImport.update({
+  id: '/ajustes',
+  path: '/ajustes',
+  getParentRoute: () => AuthenticatedAppRouteRoute,
 } as any)
 const AuthenticatedAppInicioRoute = AuthenticatedAppInicioRouteImport.update({
   id: '/inicio',
@@ -59,21 +66,30 @@ const AuthenticatedAppCaixinhasMesRoute =
     path: '/caixinhas/$mes',
     getParentRoute: () => AuthenticatedAppRouteRoute,
   } as any)
+const AuthenticatedAppNotasIdRoute = AuthenticatedAppNotasIdRouteImport.update({
+  id: '/notas/$id',
+  path: '/notas/$id',
+  getParentRoute: () => AuthenticatedAppRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/ajustes': typeof AuthenticatedAppAjustesRoute
   '/inicio': typeof AuthenticatedAppInicioRoute
   '/nova-nota': typeof AuthenticatedAppNovaNotaRoute
   '/caixinhas/$mes': typeof AuthenticatedAppCaixinhasMesRoute
+  '/notas/$id': typeof AuthenticatedAppNotasIdRoute
   '/caixinhas/': typeof AuthenticatedAppCaixinhasIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/ajustes': typeof AuthenticatedAppAjustesRoute
   '/inicio': typeof AuthenticatedAppInicioRoute
   '/nova-nota': typeof AuthenticatedAppNovaNotaRoute
   '/caixinhas/$mes': typeof AuthenticatedAppCaixinhasMesRoute
+  '/notas/$id': typeof AuthenticatedAppNotasIdRoute
   '/caixinhas': typeof AuthenticatedAppCaixinhasIndexRoute
 }
 export interface FileRoutesById {
@@ -82,27 +98,45 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/_app': typeof AuthenticatedAppRouteRouteWithChildren
+  '/_authenticated/_app/ajustes': typeof AuthenticatedAppAjustesRoute
   '/_authenticated/_app/inicio': typeof AuthenticatedAppInicioRoute
   '/_authenticated/_app/nova-nota': typeof AuthenticatedAppNovaNotaRoute
   '/_authenticated/_app/caixinhas/$mes': typeof AuthenticatedAppCaixinhasMesRoute
+  '/_authenticated/_app/notas/$id': typeof AuthenticatedAppNotasIdRoute
   '/_authenticated/_app/caixinhas/': typeof AuthenticatedAppCaixinhasIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/auth' | '/inicio' | '/nova-nota' | '/caixinhas/$mes' | '/caixinhas/'
+    | '/'
+    | '/auth'
+    | '/ajustes'
+    | '/inicio'
+    | '/nova-nota'
+    | '/caixinhas/$mes'
+    | '/notas/$id'
+    | '/caixinhas/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    '/' | '/auth' | '/inicio' | '/nova-nota' | '/caixinhas/$mes' | '/caixinhas'
+    | '/'
+    | '/auth'
+    | '/ajustes'
+    | '/inicio'
+    | '/nova-nota'
+    | '/caixinhas/$mes'
+    | '/notas/$id'
+    | '/caixinhas'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/_app'
+    | '/_authenticated/_app/ajustes'
     | '/_authenticated/_app/inicio'
     | '/_authenticated/_app/nova-nota'
     | '/_authenticated/_app/caixinhas/$mes'
+    | '/_authenticated/_app/notas/$id'
     | '/_authenticated/_app/caixinhas/'
   fileRoutesById: FileRoutesById
 }
@@ -142,6 +176,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppRouteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/_app/ajustes': {
+      id: '/_authenticated/_app/ajustes'
+      path: '/ajustes'
+      fullPath: '/ajustes'
+      preLoaderRoute: typeof AuthenticatedAppAjustesRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
     '/_authenticated/_app/inicio': {
       id: '/_authenticated/_app/inicio'
       path: '/inicio'
@@ -170,20 +211,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppCaixinhasMesRouteImport
       parentRoute: typeof AuthenticatedAppRouteRoute
     }
+    '/_authenticated/_app/notas/$id': {
+      id: '/_authenticated/_app/notas/$id'
+      path: '/notas/$id'
+      fullPath: '/notas/$id'
+      preLoaderRoute: typeof AuthenticatedAppNotasIdRouteImport
+      parentRoute: typeof AuthenticatedAppRouteRoute
+    }
   }
 }
 
 interface AuthenticatedAppRouteRouteChildren {
+  AuthenticatedAppAjustesRoute: typeof AuthenticatedAppAjustesRoute
   AuthenticatedAppInicioRoute: typeof AuthenticatedAppInicioRoute
   AuthenticatedAppNovaNotaRoute: typeof AuthenticatedAppNovaNotaRoute
   AuthenticatedAppCaixinhasMesRoute: typeof AuthenticatedAppCaixinhasMesRoute
+  AuthenticatedAppNotasIdRoute: typeof AuthenticatedAppNotasIdRoute
   AuthenticatedAppCaixinhasIndexRoute: typeof AuthenticatedAppCaixinhasIndexRoute
 }
 
 const AuthenticatedAppRouteRouteChildren: AuthenticatedAppRouteRouteChildren = {
+  AuthenticatedAppAjustesRoute: AuthenticatedAppAjustesRoute,
   AuthenticatedAppInicioRoute: AuthenticatedAppInicioRoute,
   AuthenticatedAppNovaNotaRoute: AuthenticatedAppNovaNotaRoute,
   AuthenticatedAppCaixinhasMesRoute: AuthenticatedAppCaixinhasMesRoute,
+  AuthenticatedAppNotasIdRoute: AuthenticatedAppNotasIdRoute,
   AuthenticatedAppCaixinhasIndexRoute: AuthenticatedAppCaixinhasIndexRoute,
 }
 
