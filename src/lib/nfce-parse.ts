@@ -139,7 +139,9 @@ export function parseNfceHtml(html: string): ParseResult {
   }
 
   const storeName = clean(root.querySelector("#u20")?.text) || clean(root.querySelector(".txtTopo")?.text) || "Mercado";
-  const textBlocks = root.querySelectorAll(".txtCenter .text").map((el) => clean(el.text));
+  let textEls = root.querySelectorAll(".txtCenter .text");
+  if (textEls.length === 0) textEls = root.querySelectorAll("div.text");
+  const textBlocks = textEls.map((el) => clean(el.text));
   const cnpjBlock = textBlocks.find((t) => /CNPJ/i.test(t)) ?? null;
   const storeCnpj = cnpjBlock?.match(/(\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2})/)?.[1] ?? null;
   const storeAddress = textBlocks.find((t) => t && !/CNPJ/i.test(t)) ?? null;
