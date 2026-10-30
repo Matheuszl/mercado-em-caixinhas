@@ -92,7 +92,7 @@ function NovaNota() {
     [lookup],
   );
 
-  function useManual() {
+  function continueManual() {
     const total = parseBRNumber(manualTotal);
     if (total == null || total <= 0) {
       toast.error("Informe o valor total da compra.");
@@ -224,7 +224,7 @@ function NovaNota() {
                         <Input id="date" type="date" value={manualDate} onChange={(e) => setManualDate(e.target.value)} className="h-11 rounded-xl" />
                       </div>
                     </div>
-                    <Button className="w-full" onClick={useManual}>Continuar</Button>
+                    <Button className="w-full" onClick={continueManual}>Continuar</Button>
                   </div>
                 )}
               </div>
