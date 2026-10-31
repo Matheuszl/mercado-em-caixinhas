@@ -20,13 +20,13 @@ export function currentYearMonth(): string {
 }
 
 export function monthLabel(ym: string): string {
-  const [y, m] = ym.split("-").map(Number);
+  const [y = 2000, m = 1] = ym.split("-").map(Number);
   const label = format(new Date(y, (m || 1) - 1, 1), "MMMM 'de' yyyy", { locale: ptBR });
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
 export function monthShort(ym: string): string {
-  const [y, m] = ym.split("-").map(Number);
+  const [y = 2000, m = 1] = ym.split("-").map(Number);
   const label = format(new Date(y, (m || 1) - 1, 1), "MMM", { locale: ptBR });
   return label.replace(".", "");
 }

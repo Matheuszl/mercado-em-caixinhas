@@ -33,7 +33,7 @@ function AppShell() {
   }
   if (!data) {
     const meta = user.user_metadata as { full_name?: string; name?: string };
-    const firstName = (meta.full_name || meta.name || user.email || "").split(" ")[0];
+    const firstName = (meta.full_name || meta.name || user.email || "").split(" ")[0] ?? "";
     return <Onboarding defaultName={firstName} />;
   }
 
@@ -86,7 +86,7 @@ function Onboarding({ defaultName }: { defaultName: string }) {
     setBusy("create");
     const { error } = await supabase.rpc("create_household", { p_name: "Nossa casa", p_display_name: name });
     setBusy(null);
-    if (error) return toast.error(errorMessage(error));
+    if (error) { toast.error(errorMessage(error)); return; }
     toast.success("Casa criada! Compartilhe o código em Ajustes.");
     queryClient.invalidateQueries();
   }
@@ -95,7 +95,7 @@ function Onboarding({ defaultName }: { defaultName: string }) {
     setBusy("join");
     const { error } = await supabase.rpc("join_household", { p_code: code, p_display_name: name });
     setBusy(null);
-    if (error) return toast.error(errorMessage(error));
+    if (error) { toast.error(errorMessage(error)); return; }
     toast.success("Pronto, você entrou na casa!");
     queryClient.invalidateQueries();
   }

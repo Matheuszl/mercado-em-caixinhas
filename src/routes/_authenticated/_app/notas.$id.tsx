@@ -77,7 +77,7 @@ function NotaDetalhe() {
       if (ym) await supabase.rpc("ensure_month", { p_household: household.id, p_ym: ym });
     }
     setBusy(false);
-    if (error) return toast.error(errorMessage(error));
+    if (error) { toast.error(errorMessage(error)); return; }
     toast.success("Fonte alterada");
     refresh();
   }
@@ -86,7 +86,7 @@ function NotaDetalhe() {
     setBusy(true);
     const { error } = await supabase.from("receipts").delete().eq("id", id);
     setBusy(false);
-    if (error) return toast.error(errorMessage(error));
+    if (error) { toast.error(errorMessage(error)); return; }
     await queryClient.invalidateQueries({ queryKey: ["month"] });
     await queryClient.invalidateQueries({ queryKey: ["months"] });
     toast.success("Compra apagada e valor devolvido à fonte");
