@@ -70,6 +70,7 @@ export type Database = {
       month_sources: {
         Row: {
           budget: number
+          closing_day: number
           id: string
           month_id: string
           name: string
@@ -78,6 +79,7 @@ export type Database = {
         }
         Insert: {
           budget?: number
+          closing_day?: number
           id?: string
           month_id: string
           name: string
@@ -86,6 +88,7 @@ export type Database = {
         }
         Update: {
           budget?: number
+          closing_day?: number
           id?: string
           month_id?: string
           name?: string
@@ -261,6 +264,7 @@ export type Database = {
       sources: {
         Row: {
           active: boolean
+          closing_day: number
           created_at: string
           default_amount: number
           household_id: string
@@ -270,6 +274,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          closing_day?: number
           created_at?: string
           default_amount?: number
           household_id: string
@@ -279,6 +284,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          closing_day?: number
           created_at?: string
           default_amount?: number
           household_id?: string
@@ -317,9 +323,21 @@ export type Database = {
         }
         Returns: string
       }
+      competence_ym: {
+        Args: { p_at: string; p_closing: number }
+        Returns: string
+      }
       create_household: {
         Args: { p_display_name: string; p_name: string }
         Returns: string
+      }
+      ensure_current_cycles: {
+        Args: { p_household: string }
+        Returns: {
+          month_id: string
+          source_id: string
+          year_month: string
+        }[]
       }
       ensure_current_month: { Args: { p_household: string }; Returns: string }
       ensure_month: {
@@ -329,6 +347,10 @@ export type Database = {
       is_household_member: { Args: { _household: string }; Returns: boolean }
       join_household: {
         Args: { p_code: string; p_display_name: string }
+        Returns: string
+      }
+      receipt_month: {
+        Args: { p_household: string; p_issued_at: string; p_source: string }
         Returns: string
       }
       sync_current_month: {
