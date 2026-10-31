@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { errorMessage, sourcesQuery } from "@/lib/household";
 import { formatBRL } from "@/lib/money";
-import { currentYearMonth, formatDateTime, monthLabel } from "@/lib/months";
+import { currentYearMonth, cycleLabel, cycleState, formatDateTime, monthLabel } from "@/lib/months";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/_app/notas/$id")({
@@ -71,14 +71,9 @@ function NotaDetalhe() {
     if (!data || sourceId === data.source_id) return;
     setBusy(true);
     const { error } = await supabase.from("receipts").update({ source_id: sourceId }).eq("id", id);
-    if (!error) {
-      // Make sure the month has a budget line for this source.
-      const ym = (data.months as unknown as { year_month: string } | null)?.year_month;
-      if (ym) await supabase.rpc("ensure_month", { p_household: household.id, p_ym: ym });
-    }
     setBusy(false);
     if (error) { toast.error(errorMessage(error)); return; }
-    toast.success("Fonte alterada");
+    toast.success("Fonte alterada — a compra foi para o ciclo dessa fonte");
     refresh();
   }
 
@@ -118,7 +113,8 @@ function NotaDetalhe() {
       unit_price: i.unit_price == null ? null : Number(i.unit_price),
       total_price: Number(i.total_price),
     }));
-  const backTo = ym === currentYearMonth();
+  const source = (sources ?? []).find((s) => s.id === data.source_id);
+  const backTo = source ? cycleState(ym, source.closing_day) === "active" : ym === currentYearMonth();
 
   return (
     <main className="px-5 pt-6">
@@ -147,6 +143,7 @@ function NotaDetalhe() {
           {formatDateTime(data.issued_at)}
           {data.created_by_name ? ` · lançada por ${data.created_by_name}` : ""}
           {data.origin === "manual" ? " · manual" : ""}
+          {source ? ` · ciclo ${cycleLabel(ym, source.closing_day)}` : ""}
         </p>
         <div className="dashed-rule my-3" />
         <ReceiptItems items={items} />

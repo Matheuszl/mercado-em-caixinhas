@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { summarizeMonth } from "@/lib/budget";
 import { errorMessage, monthsListQuery } from "@/lib/household";
 import { formatBRL } from "@/lib/money";
-import { currentYearMonth, monthLabel } from "@/lib/months";
+import { cycleState, monthLabel } from "@/lib/months";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/_app/caixinhas/")({
@@ -24,7 +24,6 @@ export const Route = createFileRoute("/_authenticated/_app/caixinhas/")({
 function Caixinhas() {
   const { household } = useHousehold();
   const { data, isLoading, error } = useQuery(monthsListQuery(household.id));
-  const current = currentYearMonth();
 
   return (
     <main className="px-5 pt-8">
@@ -46,7 +45,7 @@ function Caixinhas() {
             m.receipts.map((r) => ({ ...r, total: Number(r.total) })),
           );
           const neg = s.status === "negative";
-          const isCurrent = m.year_month === current;
+          const isCurrent = m.month_sources.some((x) => cycleState(m.year_month, x.closing_day) !== "closed");
           return (
             <Link
               key={m.id}
@@ -68,7 +67,7 @@ function Caixinhas() {
                   {monthLabel(m.year_month)}
                   {isCurrent && (
                     <span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold uppercase text-accent-foreground">
-                      atual
+                      em andamento
                     </span>
                   )}
                 </p>

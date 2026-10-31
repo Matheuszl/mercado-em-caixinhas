@@ -8,6 +8,13 @@
       "when": 1793389688919,
       "tag": "0000_grocery_budget_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793407776192,
+      "tag": "0001_source_closing_day",
+      "breakpoints": true
     }
   ]
 }

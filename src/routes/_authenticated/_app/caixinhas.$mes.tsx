@@ -5,7 +5,7 @@ import { useHousehold } from "@/components/household-context";
 import { MonthView } from "@/components/month-view";
 import { Skeleton } from "@/components/ui/skeleton";
 import { errorMessage, monthByYmQuery } from "@/lib/household";
-import { currentYearMonth, monthLabel } from "@/lib/months";
+import { cycleState, monthLabel } from "@/lib/months";
 
 export const Route = createFileRoute("/_authenticated/_app/caixinhas/$mes")({
   head: ({ params }) => ({
@@ -23,7 +23,7 @@ function CaixinhaMes() {
   const { mes } = Route.useParams();
   const { household } = useHousehold();
   const { data, isLoading, error } = useQuery(monthByYmQuery(household.id, mes));
-  const isCurrent = mes === currentYearMonth();
+  const isCurrent = !!data?.sources.some((s) => cycleState(mes, s.closing_day) !== "closed");
 
   return (
     <main className="px-5 pt-6">
@@ -32,7 +32,7 @@ function CaixinhaMes() {
       </Link>
       <header className="mb-5 mt-3">
         <p className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-          <Archive className="size-4" /> {isCurrent ? "Mês atual" : "Caixinha fechada"}
+          <Archive className="size-4" /> {isCurrent ? "Em andamento" : "Caixinha fechada"}
         </p>
         <h1 className="text-4xl font-semibold">{monthLabel(mes)}</h1>
       </header>

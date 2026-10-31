@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { summarizeMonth } from "@/lib/budget";
 import { currentMonthQuery, errorMessage, sourcesQuery } from "@/lib/household";
 import { formatBRL, parseBRNumber } from "@/lib/money";
-import { formatDateTime } from "@/lib/months";
+import { competenceOf, cycleLabel, formatDateTime, monthLabel } from "@/lib/months";
 import { fetchNfce } from "@/lib/nfce.functions";
 import type { ParsedNfce } from "@/lib/nfce-parse";
 import { cn } from "@/lib/utils";
@@ -267,7 +267,9 @@ function NovaNota() {
             <h2 className="text-xl font-semibold">Descontar de quem?</h2>
             <div className="mt-3 grid grid-cols-2 gap-3">
               {activeSources.map((s) => {
-                const left = remaining.get(s.id);
+                const cycle = competenceOf(new Date(draft.data.issuedAt ?? Date.now()), s.closing_day);
+                const inRunningCycle = month?.sources.some((x) => x.source_id === s.id && x.year_month === cycle);
+                const left = inRunningCycle ? remaining.get(s.id) : undefined;
                 const after = left != null ? left - draft.data.total : null;
                 const selected = sourceId === s.id;
                 return (
@@ -283,6 +285,10 @@ function NovaNota() {
                     {left != null && (
                       <p className="font-num mt-1 text-xs text-muted-foreground">tem {formatBRL(left)}</p>
                     )}
+                    <p className="font-num mt-1 text-[11px] text-muted-foreground">
+                      ciclo {cycleLabel(cycle, s.closing_day)}
+                      {!inRunningCycle && <span className="block">vai para {monthLabel(cycle).toLowerCase()}</span>}
+                    </p>
                     {selected && after != null && (
                       <p className={cn("font-num mt-1 text-xs font-semibold", after < 0 ? "text-negative" : "text-positive")}>
                         fica {formatBRL(after)}
