@@ -72,7 +72,8 @@ export function cyclePeriod(ym: string, closingDay: number): { start: string; en
   const start = `${ym}-${pad(cycleStartDay(ym, closingDay))}`;
   const next = addMonths(ym, 1);
   const nextStart = cycleStartDay(next, closingDay);
-  const endDate = new Date(Date.UTC(...(splitYm(next).map((v, i) => (i === 1 ? v - 1 : v)) as [number, number]), nextStart - 1));
+  const [ny, nm] = splitYm(next);
+  const endDate = new Date(Date.UTC(ny, nm - 1, nextStart - 1));
   const end = `${endDate.getUTCFullYear()}-${pad(endDate.getUTCMonth() + 1)}-${pad(endDate.getUTCDate())}`;
   return { start, end };
 }
