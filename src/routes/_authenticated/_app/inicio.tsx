@@ -27,6 +27,7 @@ function Inicio() {
       <header className="mb-5">
         <p className="text-sm text-muted-foreground">Oi, {displayName || "você"} 👋</p>
         <h1 className="text-4xl font-semibold">{data ? monthLabel(data.year_month) : "Este mês"}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Cada fonte mostra o próprio ciclo, do dia da virada até a próxima.</p>
       </header>
       {isLoading && (
         <div className="space-y-4">

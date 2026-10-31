@@ -3,7 +3,7 @@ import { ChevronRight, ReceiptText } from "lucide-react";
 import { summarizeMonth } from "@/lib/budget";
 import type { MonthDetail } from "@/lib/household";
 import { formatBRL } from "@/lib/money";
-import { formatDay, monthLabel } from "@/lib/months";
+import { cycleLabel, cyclePeriod, cycleState, daysLeftInCycle, formatDay, monthLabel, shortDate } from "@/lib/months";
 import { cn } from "@/lib/utils";
 
 export function MonthView({ month, isCurrent }: { month: MonthDetail; isCurrent: boolean }) {
@@ -11,6 +11,7 @@ export function MonthView({ month, isCurrent }: { month: MonthDetail; isCurrent:
   const negative = summary.status === "negative";
   const pct = Math.min(summary.usedRatio, 1) * 100;
   const sourceName = new Map(month.sources.map((s) => [s.source_id, s.name]));
+  const lineOf = new Map(month.sources.map((s) => [s.source_id, s]));
 
   return (
     <div className="space-y-6">
@@ -36,6 +37,7 @@ export function MonthView({ month, isCurrent }: { month: MonthDetail; isCurrent:
       <section className="grid grid-cols-2 gap-3">
         {summary.sources.map((s, i) => {
           const neg = s.remaining < 0;
+          const line = lineOf.get(s.sourceId);
           const ratio = s.budget > 0 ? Math.min(s.spent / s.budget, 1) : s.spent > 0 ? 1 : 0;
           return (
             <div
@@ -52,6 +54,16 @@ export function MonthView({ month, isCurrent }: { month: MonthDetail; isCurrent:
                 {formatBRL(Math.abs(s.remaining))}
               </p>
               <p className="font-num mt-0.5 text-[11px] text-muted-foreground">de {formatBRL(s.budget)}</p>
+              {line && (
+                <p className="font-num mt-2 text-[11px] leading-snug text-muted-foreground">
+                  {cycleLabel(line.year_month, line.closing_day)}
+                  {cycleNote(line.year_month, line.closing_day) && (
+                    <span className="block font-semibold text-foreground/70">
+                      {cycleNote(line.year_month, line.closing_day)}
+                    </span>
+                  )}
+                </p>
+              )}
               <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
                 <div
                   className={cn("h-full rounded-full", neg ? "bg-negative" : "bg-primary")}
@@ -108,4 +120,13 @@ export function MonthView({ month, isCurrent }: { month: MonthDetail; isCurrent:
       </section>
     </div>
   );
+}
+
+/** Short status of a source's cycle: when it turns over, starts, or that it already closed. */
+function cycleNote(ym: string, closingDay: number): string | null {
+  const state = cycleState(ym, closingDay);
+  if (state === "upcoming") return `começa ${shortDate(cyclePeriod(ym, closingDay).start)}`;
+  if (state === "closed") return null;
+  const turnsIn = daysLeftInCycle(ym, closingDay) + 1;
+  return turnsIn === 1 ? "vira amanhã" : `vira em ${turnsIn} dias`;
 }
