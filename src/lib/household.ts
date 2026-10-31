@@ -32,10 +32,14 @@ export type MonthSourceRow = {
   name: string;
   budget: number;
   position: number;
+  closing_day: number;
+  /** Cycle this budget line belongs to (the month's own key, or each source's running cycle on the home screen). */
+  year_month: string;
 };
 
 export type ReceiptRow = {
   id: string;
+  month_id: string;
   source_id: string;
   store_name: string;
   total: number;
@@ -52,14 +56,17 @@ export type MonthDetail = {
   receipts: ReceiptRow[];
 };
 
+const RECEIPT_COLUMNS =
+  "id, month_id, source_id, store_name, total, issued_at, origin, created_by_name, receipt_items(count)";
+
 async function loadMonth(monthId: string): Promise<MonthDetail> {
   const [{ data: month, error: e1 }, { data: sources, error: e2 }, { data: receipts, error: e3 }] =
     await Promise.all([
       supabase.from("months").select("id, year_month").eq("id", monthId).single(),
-      supabase.from("month_sources").select("id, source_id, name, budget, position").eq("month_id", monthId),
+      supabase.from("month_sources").select("id, source_id, name, budget, position, closing_day").eq("month_id", monthId),
       supabase
         .from("receipts")
-        .select("id, source_id, store_name, total, issued_at, origin, created_by_name, receipt_items(count)")
+        .select(RECEIPT_COLUMNS)
         .eq("month_id", monthId)
         .order("issued_at", { ascending: false }),
     ]);
@@ -69,20 +76,52 @@ async function loadMonth(monthId: string): Promise<MonthDetail> {
   return {
     id: month.id,
     year_month: month.year_month,
-    sources: (sources ?? []).map((s) => ({ ...s, budget: Number(s.budget) })),
+    sources: (sources ?? []).map((s) => ({ ...s, budget: Number(s.budget), year_month: month.year_month })),
     receipts: (receipts ?? []).map((r) => ({ ...r, total: Number(r.total) })) as ReceiptRow[],
   };
 }
 
+/**
+ * What is running right now: each active source in its own current cycle
+ * (e.g. Matheus 22/10–21/11 and Maria 01/11–30/11 on 05/11).
+ */
 export const currentMonthQuery = (householdId: string) =>
   queryOptions({
     queryKey: ["month", householdId, "current"],
-    queryFn: async () => {
-      const { data: monthId, error } = await supabase.rpc("ensure_current_month", {
-        p_household: householdId,
-      });
+    queryFn: async (): Promise<MonthDetail> => {
+      const { data: cycles, error } = await supabase.rpc("ensure_current_cycles", { p_household: householdId });
       if (error) throw error;
-      return loadMonth(monthId as string);
+      const rows = cycles ?? [];
+      const monthIds = [...new Set(rows.map((c) => c.month_id))];
+      const key = (monthId: string, sourceId: string) => `${monthId}:${sourceId}`;
+      const running = new Map(rows.map((c) => [key(c.month_id, c.source_id), c.year_month]));
+      if (monthIds.length === 0) {
+        return { id: "current", year_month: currentYearMonth(), sources: [], receipts: [] };
+      }
+      const [{ data: lines, error: e1 }, { data: receipts, error: e2 }] = await Promise.all([
+        supabase
+          .from("month_sources")
+          .select("id, month_id, source_id, name, budget, position, closing_day")
+          .in("month_id", monthIds),
+        supabase
+          .from("receipts")
+          .select(RECEIPT_COLUMNS)
+          .in("month_id", monthIds)
+          .order("issued_at", { ascending: false }),
+      ]);
+      if (e1) throw e1;
+      if (e2) throw e2;
+      const sources: MonthSourceRow[] = (lines ?? [])
+        .filter((l) => running.has(key(l.month_id, l.source_id)))
+        .map(({ month_id, ...l }) => ({
+          ...l,
+          budget: Number(l.budget),
+          year_month: running.get(key(month_id, l.source_id))!,
+        }));
+      const ownReceipts = (receipts ?? [])
+        .filter((r) => running.has(key(r.month_id, r.source_id)))
+        .map((r) => ({ ...r, total: Number(r.total) })) as ReceiptRow[];
+      return { id: "current", year_month: currentYearMonth(), sources, receipts: ownReceipts };
     },
   });
 
