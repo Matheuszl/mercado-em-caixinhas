@@ -56,8 +56,8 @@ function Ajustes() {
   async function save() {
     for (const r of rows) {
       const n = parseBRNumber(r.amount);
-      if (!r.name.trim()) return toast.error("Toda fonte precisa de um nome.");
-      if (n == null || n < 0) return toast.error(`Valor inválido para ${r.name}.`);
+      if (!r.name.trim()) { toast.error("Toda fonte precisa de um nome."); return; }
+      if (n == null || n < 0) { toast.error(`Valor inválido para ${r.name}.`); return; }
     }
     setSaving(true);
     try {

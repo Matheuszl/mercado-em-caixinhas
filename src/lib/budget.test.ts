@@ -23,8 +23,8 @@ describe("summarizeMonth", () => {
       { source_id: "maria", total: 80.1 },
       { source_id: "matheus", total: 0.1 },
     ]);
-    expect(s.sources[0].remaining).toBe(887.45);
-    expect(s.sources[1].remaining).toBe(419.9);
+    expect(s.sources[0]!.remaining).toBe(887.45);
+    expect(s.sources[1]!.remaining).toBe(419.9);
     expect(s.remaining).toBe(1307.35);
   });
 
@@ -33,7 +33,7 @@ describe("summarizeMonth", () => {
       { source_id: "matheus", total: 1000 },
       { source_id: "maria", total: 750.5 },
     ]);
-    expect(s.sources[1].remaining).toBe(-250.5);
+    expect(s.sources[1]!.remaining).toBe(-250.5);
     expect(s.remaining).toBe(-50.5);
     expect(s.status).toBe("negative");
   });
