@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { currentYearMonth } from "@/lib/months";
 
 export type Household = { id: string; name: string; invite_code: string };
 export type HouseholdMembership = {
@@ -144,7 +145,7 @@ export const monthByYmQuery = (householdId: string, ym: string) =>
 export type MonthListRow = {
   id: string;
   year_month: string;
-  month_sources: { budget: number; source_id: string; name: string; position: number }[];
+  month_sources: { budget: number; source_id: string; name: string; position: number; closing_day: number }[];
   receipts: { total: number; source_id: string }[];
 };
 
@@ -154,7 +155,7 @@ export const monthsListQuery = (householdId: string) =>
     queryFn: async (): Promise<MonthListRow[]> => {
       const { data, error } = await supabase
         .from("months")
-        .select("id, year_month, month_sources(budget, source_id, name, position), receipts(total, source_id)")
+        .select("id, year_month, month_sources(budget, source_id, name, position, closing_day), receipts(total, source_id)")
         .eq("household_id", householdId)
         .order("year_month", { ascending: false });
       if (error) throw error;
@@ -168,7 +169,7 @@ export const sourcesQuery = (householdId: string) =>
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sources")
-        .select("id, name, default_amount, position, active")
+        .select("id, name, default_amount, position, active, closing_day")
         .eq("household_id", householdId)
         .order("position");
       if (error) throw error;
