@@ -50,8 +50,8 @@ function Caixinhas() {
           return (
             <Link
               key={m.id}
-              to={isCurrent ? "/inicio" : "/caixinhas/$mes"}
-              params={isCurrent ? undefined : { mes: m.year_month }}
+              to="/caixinhas/$mes"
+              params={{ mes: m.year_month }}
               className="animate-rise flex items-center gap-4 rounded-2xl border bg-card p-4 shadow-paper active:scale-[0.99]"
               style={{ animationDelay: `${i * 40}ms` }}
             >
