@@ -1,9 +1,18 @@
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, ReceiptText } from "lucide-react";
-import { summarizeMonth } from "@/lib/budget";
+import { dailyAllowance, summarizeMonth } from "@/lib/budget";
 import type { MonthDetail } from "@/lib/household";
 import { formatBRL } from "@/lib/money";
-import { cycleLabel, cyclePeriod, cycleState, daysLeftInCycle, formatDay, monthLabel, shortDate } from "@/lib/months";
+import {
+  cycleLabel,
+  cyclePeriod,
+  cycleState,
+  daysLeftInCycle,
+  formatDay,
+  monthLabel,
+  shortDate,
+  spendingDaysLeft,
+} from "@/lib/months";
 import { cn } from "@/lib/utils";
 
 export function MonthView({ month, isCurrent }: { month: MonthDetail; isCurrent: boolean }) {
@@ -12,6 +21,16 @@ export function MonthView({ month, isCurrent }: { month: MonthDetail; isCurrent:
   const pct = Math.min(summary.usedRatio, 1) * 100;
   const sourceName = new Map(month.sources.map((s) => [s.source_id, s.name]));
   const lineOf = new Map(month.sources.map((s) => [s.source_id, s]));
+
+  // Daily pace per source: what is left divided by the days left in that source's own cycle.
+  const daily = new Map(
+    summary.sources.map((s) => {
+      const line = lineOf.get(s.sourceId);
+      const days = isCurrent && line ? spendingDaysLeft(line.year_month, line.closing_day) : 0;
+      return [s.sourceId, { days, perDay: dailyAllowance(s.remaining, days) }];
+    }),
+  );
+  const totalPerDay = [...daily.values()].reduce((acc, d) => acc + Math.round(d.perDay * 100), 0) / 100;
 
   return (
     <div className="space-y-6">
@@ -32,6 +51,12 @@ export function MonthView({ month, isCurrent }: { month: MonthDetail; isCurrent:
             style={{ width: `${pct}%` }}
           />
         </div>
+        {isCurrent && summary.sources.length > 0 && (
+          <div className="mt-5 flex items-baseline justify-between gap-3 border-t border-dashed border-ink-foreground/25 pt-4">
+            <p className="text-sm opacity-80">Dá para gastar por dia</p>
+            <p className="font-num text-2xl font-semibold text-accent">{formatBRL(totalPerDay)}</p>
+          </div>
+        )}
       </section>
 
       <section className="grid grid-cols-2 gap-3">
@@ -63,6 +88,21 @@ export function MonthView({ month, isCurrent }: { month: MonthDetail; isCurrent:
                     </span>
                   )}
                 </p>
+              )}
+              {isCurrent && (daily.get(s.sourceId)?.days ?? 0) > 0 && (
+                <div className="mt-3 rounded-xl bg-muted/60 px-2.5 py-2">
+                  <p className="font-num text-base font-semibold">
+                    {neg || daily.get(s.sourceId)!.perDay === 0
+                      ? formatBRL(0)
+                      : formatBRL(daily.get(s.sourceId)!.perDay)}
+                    <span className="text-[11px] font-normal text-muted-foreground"> /dia</span>
+                  </p>
+                  <p className="font-num text-[11px] text-muted-foreground">
+                    {neg
+                      ? "sem saldo até a virada"
+                      : `${daily.get(s.sourceId)!.days} ${daily.get(s.sourceId)!.days === 1 ? "dia restante" : "dias restantes"}`}
+                  </p>
+                </div>
               )}
               <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
                 <div

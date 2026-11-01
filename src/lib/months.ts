@@ -96,6 +96,15 @@ export function daysLeftInCycle(ym: string, closingDay: number, now: Date = new 
   return Math.round((b - a) / 86_400_000);
 }
 
+/** Days still available to spend in a cycle, counting today (0 once it closed; whole length if not started). */
+export function spendingDaysLeft(ym: string, closingDay: number, now: Date = new Date()): number {
+  const state = cycleState(ym, closingDay, now);
+  if (state === "closed") return 0;
+  if (state === "active") return daysLeftInCycle(ym, closingDay, now) + 1;
+  const { start, end } = cyclePeriod(ym, closingDay);
+  return Math.round((Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000) + 1;
+}
+
 const MONTHS_SHORT = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
 /** "2026-10-22" → "22/out" */
