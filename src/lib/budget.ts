@@ -74,3 +74,10 @@ export function summarizeMonth(
     usedRatio: budgetC > 0 ? spentC / budgetC : spentC > 0 ? 1 : 0,
   };
 }
+
+/** How much can be spent per day to end the cycle at zero (0 when nothing is left or no days remain). */
+export function dailyAllowance(remaining: number, daysLeft: number): number {
+  const remC = cents(Number(remaining));
+  if (daysLeft <= 0 || remC <= 0) return 0;
+  return fromCents(Math.floor(remC / daysLeft));
+}
