@@ -89,6 +89,21 @@ export function MonthView({ month, isCurrent }: { month: MonthDetail; isCurrent:
                   )}
                 </p>
               )}
+              {isCurrent && (daily.get(s.sourceId)?.days ?? 0) > 0 && (
+                <div className="mt-3 rounded-xl bg-muted/60 px-2.5 py-2">
+                  <p className="font-num text-base font-semibold">
+                    {neg || daily.get(s.sourceId)!.perDay === 0
+                      ? formatBRL(0)
+                      : formatBRL(daily.get(s.sourceId)!.perDay)}
+                    <span className="text-[11px] font-normal text-muted-foreground"> /dia</span>
+                  </p>
+                  <p className="font-num text-[11px] text-muted-foreground">
+                    {neg
+                      ? "sem saldo até a virada"
+                      : `${daily.get(s.sourceId)!.days} ${daily.get(s.sourceId)!.days === 1 ? "dia restante" : "dias restantes"}`}
+                  </p>
+                </div>
+              )}
               <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
                 <div
                   className={cn("h-full rounded-full", neg ? "bg-negative" : "bg-primary")}
