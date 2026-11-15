@@ -48,37 +48,69 @@ export type ReceiptRow = {
   origin: string;
   created_by_name: string | null;
   receipt_items: { count: number }[];
+  /** How the receipt was divided between sources (all parts, any cycle). */
+  receipt_splits: { source_id: string; amount: number }[];
 };
+
+/** One source's share of a receipt that counts in this month. */
+export type Charge = { receipt_id: string; source_id: string; total: number; issued_at: string };
 
 export type MonthDetail = {
   id: string;
   year_month: string;
   sources: MonthSourceRow[];
+  /** Receipts with at least one share in this month (each once). */
   receipts: ReceiptRow[];
+  /** Shares that discount from this month's sources. */
+  charges: Charge[];
 };
 
 const RECEIPT_COLUMNS =
-  "id, month_id, source_id, store_name, total, issued_at, origin, created_by_name, receipt_items(count)";
+  "id, month_id, source_id, store_name, total, issued_at, origin, created_by_name, receipt_items(count), receipt_splits(source_id, amount)";
+
+type SplitRow = { month_id: string; source_id: string; amount: number; receipts: unknown };
+
+async function loadSplits(monthIds: string[]): Promise<SplitRow[]> {
+  const { data, error } = await supabase
+    .from("receipt_splits")
+    .select(`month_id, source_id, amount, receipts(${RECEIPT_COLUMNS})`)
+    .in("month_id", monthIds);
+  if (error) throw error;
+  return (data ?? []) as unknown as SplitRow[];
+}
+
+function fromSplits(splits: SplitRow[]): { receipts: ReceiptRow[]; charges: Charge[] } {
+  const byId = new Map<string, ReceiptRow>();
+  const charges: Charge[] = [];
+  for (const sp of splits) {
+    const r = sp.receipts as ReceiptRow | null;
+    if (!r) continue;
+    if (!byId.has(r.id)) {
+      byId.set(r.id, {
+        ...r,
+        total: Number(r.total),
+        receipt_splits: (r.receipt_splits ?? []).map((x) => ({ ...x, amount: Number(x.amount) })),
+      });
+    }
+    charges.push({ receipt_id: r.id, source_id: sp.source_id, total: Number(sp.amount), issued_at: r.issued_at });
+  }
+  const receipts = [...byId.values()].sort((a, b) => b.issued_at.localeCompare(a.issued_at));
+  return { receipts, charges };
+}
 
 async function loadMonth(monthId: string): Promise<MonthDetail> {
-  const [{ data: month, error: e1 }, { data: sources, error: e2 }, { data: receipts, error: e3 }] =
-    await Promise.all([
-      supabase.from("months").select("id, year_month").eq("id", monthId).single(),
-      supabase.from("month_sources").select("id, source_id, name, budget, position, closing_day").eq("month_id", monthId),
-      supabase
-        .from("receipts")
-        .select(RECEIPT_COLUMNS)
-        .eq("month_id", monthId)
-        .order("issued_at", { ascending: false }),
-    ]);
+  const [{ data: month, error: e1 }, { data: sources, error: e2 }, splits] = await Promise.all([
+    supabase.from("months").select("id, year_month").eq("id", monthId).single(),
+    supabase.from("month_sources").select("id, source_id, name, budget, position, closing_day").eq("month_id", monthId),
+    loadSplits([monthId]),
+  ]);
   if (e1) throw e1;
   if (e2) throw e2;
-  if (e3) throw e3;
   return {
     id: month.id,
     year_month: month.year_month,
     sources: (sources ?? []).map((s) => ({ ...s, budget: Number(s.budget), year_month: month.year_month })),
-    receipts: (receipts ?? []).map((r) => ({ ...r, total: Number(r.total) })) as ReceiptRow[],
+    ...fromSplits(splits),
   };
 }
 
@@ -97,21 +129,16 @@ export const currentMonthQuery = (householdId: string) =>
       const key = (monthId: string, sourceId: string) => `${monthId}:${sourceId}`;
       const running = new Map(rows.map((c) => [key(c.month_id, c.source_id), c.year_month]));
       if (monthIds.length === 0) {
-        return { id: "current", year_month: currentYearMonth(), sources: [], receipts: [] };
+        return { id: "current", year_month: currentYearMonth(), sources: [], receipts: [], charges: [] };
       }
-      const [{ data: lines, error: e1 }, { data: receipts, error: e2 }] = await Promise.all([
+      const [{ data: lines, error: e1 }, splits] = await Promise.all([
         supabase
           .from("month_sources")
           .select("id, month_id, source_id, name, budget, position, closing_day")
           .in("month_id", monthIds),
-        supabase
-          .from("receipts")
-          .select(RECEIPT_COLUMNS)
-          .in("month_id", monthIds)
-          .order("issued_at", { ascending: false }),
+        loadSplits(monthIds),
       ]);
       if (e1) throw e1;
-      if (e2) throw e2;
       const sources: MonthSourceRow[] = (lines ?? [])
         .filter((l) => running.has(key(l.month_id, l.source_id)))
         .map(({ month_id, ...l }) => ({
@@ -119,10 +146,8 @@ export const currentMonthQuery = (householdId: string) =>
           budget: Number(l.budget),
           year_month: running.get(key(month_id, l.source_id))!,
         }));
-      const ownReceipts = (receipts ?? [])
-        .filter((r) => running.has(key(r.month_id, r.source_id)))
-        .map((r) => ({ ...r, total: Number(r.total) })) as ReceiptRow[];
-      return { id: "current", year_month: currentYearMonth(), sources, receipts: ownReceipts };
+      const own = fromSplits(splits.filter((sp) => running.has(key(sp.month_id, sp.source_id))));
+      return { id: "current", year_month: currentYearMonth(), sources, ...own };
     },
   });
 
@@ -155,11 +180,14 @@ export const monthsListQuery = (householdId: string) =>
     queryFn: async (): Promise<MonthListRow[]> => {
       const { data, error } = await supabase
         .from("months")
-        .select("id, year_month, month_sources(budget, source_id, name, position, closing_day), receipts(total, source_id)")
+        .select("id, year_month, month_sources(budget, source_id, name, position, closing_day), receipt_splits(amount, source_id)")
         .eq("household_id", householdId)
         .order("year_month", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as unknown as MonthListRow[];
+      return (data ?? []).map((m) => ({
+        ...m,
+        receipts: (m.receipt_splits ?? []).map((x) => ({ source_id: x.source_id, total: Number(x.amount) })),
+      })) as unknown as MonthListRow[];
     },
   });
 

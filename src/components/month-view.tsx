@@ -17,7 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export function MonthView({ month, isCurrent }: { month: MonthDetail; isCurrent: boolean }) {
-  const summary = summarizeMonth(month.sources, month.receipts);
+  const summary = summarizeMonth(month.sources, month.charges);
   const negative = summary.status === "negative";
   const pct = Math.min(summary.usedRatio, 1) * 100;
   const sourceName = new Map(month.sources.map((s) => [s.source_id, s.name]));
@@ -42,7 +42,7 @@ export function MonthView({ month, isCurrent }: { month: MonthDetail; isCurrent:
       const weekAgo = new Date(Date.parse(`${today}T12:00:00Z`) - 6 * 86_400_000).toISOString().slice(0, 10);
       const from = start > weekAgo ? start : weekAgo;
       const windowDays = Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
-      const recent = month.receipts
+      const recent = month.charges
         .filter((r) => r.source_id === s.sourceId && dateOf(new Date(r.issued_at)) >= from)
         .reduce((acc, r) => acc + Math.round(Number(r.total) * 100), 0) / 100;
       const d = daily.get(s.sourceId)!;
@@ -189,9 +189,18 @@ export function MonthView({ month, isCurrent }: { month: MonthDetail; isCurrent:
                     <p className="truncate font-semibold">{r.store_name}</p>
                     <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
                       <span className="capitalize">{formatDay(r.issued_at)}</span>
-                      <span className="rounded-full bg-primary-soft px-2 py-0.5 font-semibold text-primary">
-                        {sourceName.get(r.source_id) ?? "Fonte"}
-                      </span>
+                      {r.receipt_splits.length > 1 ? (
+                        <span className="font-num rounded-full bg-accent/25 px-2 py-0.5 font-semibold text-foreground">
+                          Dividida ·{" "}
+                          {r.receipt_splits
+                            .map((x) => `${sourceName.get(x.source_id) ?? "Fonte"} ${formatBRL(x.amount)}`)
+                            .join(" · ")}
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-primary-soft px-2 py-0.5 font-semibold text-primary">
+                          {sourceName.get(r.receipt_splits[0]?.source_id ?? r.source_id) ?? "Fonte"}
+                        </span>
+                      )}
                       {r.receipt_items?.[0]?.count ? <span>{r.receipt_items[0].count} itens</span> : null}
                     </p>
                   </div>

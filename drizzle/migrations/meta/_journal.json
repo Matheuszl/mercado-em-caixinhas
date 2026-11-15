@@ -15,6 +15,13 @@
       "when": 1793407776192,
       "tag": "0001_source_closing_day",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794705416140,
+      "tag": "0002_receipt_splits",
+      "breakpoints": true
     }
   ]
 }

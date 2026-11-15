@@ -23,6 +23,8 @@ import { errorMessage, sourcesQuery } from "@/lib/household";
 import { formatBRL } from "@/lib/money";
 import { currentYearMonth, cycleLabel, cycleState, formatDateTime, monthLabel } from "@/lib/months";
 import { cn } from "@/lib/utils";
+import { SplitPicker } from "@/components/split-picker";
+import { splitSum, type SplitMap } from "@/lib/split";
 
 export const Route = createFileRoute("/_authenticated/_app/notas/$id")({
   head: () => ({
@@ -49,7 +51,7 @@ function NotaDetalhe() {
       const { data, error } = await supabase
         .from("receipts")
         .select(
-          "id, source_id, access_key, store_name, store_cnpj, store_address, issued_at, total, qr_url, origin, created_by_name, months(year_month), receipt_items(description, quantity, unit, unit_price, total_price, position)",
+          "id, source_id, access_key, store_name, store_cnpj, store_address, issued_at, total, qr_url, origin, created_by_name, months(year_month), receipt_splits(source_id, amount), receipt_items(description, quantity, unit, unit_price, total_price, position)",
         )
         .eq("id", id)
         .maybeSingle();
@@ -67,13 +69,18 @@ function NotaDetalhe() {
     ]);
   }
 
-  async function changeSource(sourceId: string) {
-    if (!data || sourceId === data.source_id) return;
+  async function saveSplit() {
+    if (!data || !split) return;
     setBusy(true);
-    const { error } = await supabase.from("receipts").update({ source_id: sourceId }).eq("id", id);
+    const parts = Object.entries(split).filter(([, c]) => c > 0);
+    const { error } = await supabase.rpc("set_receipt_splits", {
+      p_receipt: id,
+      p_splits: (parts.length ? parts : Object.entries(split).slice(0, 1)).map(([source_id, c]) => ({ source_id, amount: c / 100 })),
+    });
     setBusy(false);
     if (error) { toast.error(errorMessage(error)); return; }
-    toast.success("Fonte alterada — a compra foi para o ciclo dessa fonte");
+    toast.success("Divisão salva — cada parte foi para o ciclo da sua fonte");
+    setSplit(null);
     refresh();
   }
 
@@ -114,6 +121,11 @@ function NotaDetalhe() {
       total_price: Number(i.total_price),
     }));
   const source = (sources ?? []).find((s) => s.id === data.source_id);
+  const totalC = Math.round(Number(data.total) * 100);
+  const savedSplit: SplitMap = Object.fromEntries(
+    (data.receipt_splits ?? []).map((x) => [x.source_id, Math.round(Number(x.amount) * 100)]),
+  );
+  const currentSplit = split ?? savedSplit;
   const backTo = source ? cycleState(ym, source.closing_day) === "active" : ym === currentYearMonth();
 
   return (
@@ -161,21 +173,26 @@ function NotaDetalhe() {
 
       <section className="mt-6">
         <h2 className="text-lg font-semibold">Descontado de</h2>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {(sources ?? []).map((s) => (
-            <button
-              key={s.id}
-              disabled={busy}
-              onClick={() => changeSource(s.id)}
-              className={cn(
-                "rounded-full border px-4 py-2 text-sm font-semibold transition-colors",
-                s.id === data.source_id ? "border-primary bg-primary text-primary-foreground" : "bg-card",
-              )}
-            >
-              {s.name}
-            </button>
-          ))}
+        <div className="mt-2">
+          <SplitPicker
+            totalC={totalC}
+            value={currentSplit}
+            onChange={setSplit}
+            sources={(sources ?? [])
+              .filter((s) => s.active || savedSplit[s.id] != null)
+              .map((s) => ({ id: s.id, name: s.name }))}
+          />
         </div>
+        {split && (
+          <div className="mt-3 flex gap-2">
+            <Button className="flex-1" disabled={busy || splitSum(split) !== totalC} onClick={saveSplit}>
+              Salvar divisão
+            </Button>
+            <Button variant="ghost" disabled={busy} onClick={() => setSplit(null)}>
+              Cancelar
+            </Button>
+          </div>
+        )}
       </section>
 
       <div className="mt-6 flex flex-col gap-3">

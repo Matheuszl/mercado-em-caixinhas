@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, ClipboardPaste, Loader2, PencilLine, QrCode, Store } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +19,8 @@ import { competenceOf, cycleLabel, formatDateTime, monthLabel } from "@/lib/mont
 import { fetchNfce } from "@/lib/nfce.functions";
 import type { ParsedNfce } from "@/lib/nfce-parse";
 import { cn } from "@/lib/utils";
+import { SplitPicker } from "@/components/split-picker";
+import { splitSum, type SplitMap } from "@/lib/split";
 
 export const Route = createFileRoute("/_authenticated/_app/nova-nota")({
   head: () => ({
@@ -53,7 +55,7 @@ function NovaNota() {
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [pasted, setPasted] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [sourceId, setSourceId] = useState<string | null>(null);
+  const [split, setSplit] = useState<SplitMap>({});
   const [saving, setSaving] = useState(false);
 
   const [manualStore, setManualStore] = useState("");
@@ -65,11 +67,14 @@ function NovaNota() {
 
   const remaining = useMemo(() => {
     if (!month) return new Map<string, number>();
-    const s = summarizeMonth(month.sources, month.receipts);
+    const s = summarizeMonth(month.sources, month.charges);
     return new Map(s.sources.map((x) => [x.sourceId, x.remaining]));
   }, [month]);
 
   const activeSources = (sources ?? []).filter((s) => s.active);
+  useEffect(() => setSplit({}), [draft]);
+  const totalC = draft ? Math.round(draft.data.total * 100) : 0;
+  const splitOk = draft != null && Object.keys(split).length > 0 && splitSum(split) === totalC;
 
   const readNota = useCallback(
     async (text: string) => {
@@ -114,12 +119,15 @@ function NovaNota() {
   }
 
   async function save() {
-    if (!draft || !sourceId) return;
+    if (!draft || !splitOk) return;
     setSaving(true);
     const d = draft.data;
+    const parts = Object.entries(split).filter(([, c]) => c > 0);
+    const main = [...parts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? Object.keys(split)[0];
     const { data: id, error } = await supabase.rpc("add_receipt", {
       p_household: household.id,
-      p_source: sourceId,
+      p_source: main,
+      p_splits: (parts.length ? parts : [[main, 0] as [string, number]]).map(([source_id, c]) => ({ source_id, amount: c / 100 })),
       p_access_key: d.accessKey ?? "",
       p_store_name: d.storeName,
       p_store_cnpj: d.storeCnpj ?? "",
@@ -137,7 +145,12 @@ function NovaNota() {
     }
     await queryClient.invalidateQueries({ queryKey: ["month"] });
     await queryClient.invalidateQueries({ queryKey: ["months"] });
-    toast.success(`${formatBRL(d.total)} descontado de ${activeSources.find((s) => s.id === sourceId)?.name}`);
+    const nameOf = (id: string) => activeSources.find((s) => s.id === id)?.name;
+    toast.success(
+      parts.length > 1
+        ? `Dividida: ${parts.map(([id, c]) => `${nameOf(id)} ${formatBRL(c / 100)}`).join(" · ")}`
+        : `${formatBRL(d.total)} descontado de ${nameOf(main)}`,
+    );
     navigate({ to: "/notas/$id", params: { id: id as string }, replace: true });
   }
 
@@ -265,42 +278,39 @@ function NovaNota() {
 
           <section>
             <h2 className="text-xl font-semibold">Descontar de quem?</h2>
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              {activeSources.map((s) => {
-                const cycle = competenceOf(new Date(draft.data.issuedAt ?? Date.now()), s.closing_day);
-                const inRunningCycle = month?.sources.some((x) => x.source_id === s.id && x.year_month === cycle);
-                const left = inRunningCycle ? remaining.get(s.id) : undefined;
-                const after = left != null ? left - draft.data.total : null;
-                const selected = sourceId === s.id;
-                return (
-                  <button
-                    key={s.id}
-                    onClick={() => setSourceId(s.id)}
-                    className={cn(
-                      "rounded-2xl border-2 bg-card p-4 text-left shadow-paper transition-all",
-                      selected ? "border-primary ring-4 ring-primary/15" : "border-transparent",
-                    )}
-                  >
-                    <p className="font-semibold">{s.name}</p>
-                    {left != null && (
-                      <p className="font-num mt-1 text-xs text-muted-foreground">tem {formatBRL(left)}</p>
-                    )}
-                    <p className="font-num mt-1 text-[11px] text-muted-foreground">
-                      ciclo {cycleLabel(cycle, s.closing_day)}
-                      {!inRunningCycle && <span className="block">vai para {monthLabel(cycle).toLowerCase()}</span>}
-                    </p>
-                    {selected && after != null && (
-                      <p className={cn("font-num mt-1 text-xs font-semibold", after < 0 ? "text-negative" : "text-positive")}>
-                        fica {formatBRL(after)}
-                      </p>
-                    )}
-                  </button>
-                );
-              })}
+            <div className="mt-3">
+              <SplitPicker
+                totalC={totalC}
+                value={split}
+                onChange={setSplit}
+                sources={activeSources.map((s) => {
+                  const cycle = competenceOf(new Date(draft.data.issuedAt ?? Date.now()), s.closing_day);
+                  const inRunningCycle = month?.sources.some((x) => x.source_id === s.id && x.year_month === cycle);
+                  const left = inRunningCycle ? remaining.get(s.id) : undefined;
+                  const share = (split[s.id] ?? 0) / 100;
+                  const after = left != null && share > 0 ? left - share : null;
+                  return {
+                    id: s.id,
+                    name: s.name,
+                    hint: (
+                      <>
+                        {left != null && <span>tem {formatBRL(left)} · </span>}
+                        <span>ciclo {cycleLabel(cycle, s.closing_day)}</span>
+                        {!inRunningCycle && <span className="block">vai para {monthLabel(cycle).toLowerCase()}</span>}
+                        {after != null && (
+                          <span className={cn("block font-semibold", after < 0 ? "text-negative" : "text-positive")}>
+                            fica {formatBRL(after)}
+                          </span>
+                        )}
+                      </>
+                    ),
+                  };
+                })}
+              />
             </div>
           </section>
 
-          <Button variant="yolk" size="lg" className="h-14 w-full text-base" disabled={!sourceId || saving} onClick={save}>
+          <Button variant="yolk" size="lg" className="h-14 w-full text-base" disabled={!splitOk || saving} onClick={save}>
             {saving ? <Loader2 className="animate-spin" /> : null}
             Salvar e descontar {formatBRL(draft.data.total)}
           </Button>

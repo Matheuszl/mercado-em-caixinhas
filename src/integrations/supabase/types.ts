@@ -185,6 +185,62 @@ export type Database = {
           },
         ]
       }
+      receipt_splits: {
+        Row: {
+          amount: number
+          household_id: string
+          id: string
+          month_id: string
+          receipt_id: string
+          source_id: string
+        }
+        Insert: {
+          amount: number
+          household_id: string
+          id?: string
+          month_id: string
+          receipt_id: string
+          source_id: string
+        }
+        Update: {
+          amount?: number
+          household_id?: string
+          id?: string
+          month_id?: string
+          receipt_id?: string
+          source_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_splits_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_splits_month_id_fkey"
+            columns: ["month_id"]
+            isOneToOne: false
+            referencedRelation: "months"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_splits_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "receipts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_splits_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       receipts: {
         Row: {
           access_key: string | null
@@ -316,6 +372,7 @@ export type Database = {
           p_origin: string
           p_qr_url: string
           p_source: string
+          p_splits?: Json
           p_store_address: string
           p_store_cnpj: string
           p_store_name: string
@@ -352,6 +409,10 @@ export type Database = {
       receipt_month: {
         Args: { p_household: string; p_issued_at: string; p_source: string }
         Returns: string
+      }
+      set_receipt_splits: {
+        Args: { p_receipt: string; p_splits: Json }
+        Returns: undefined
       }
       sync_current_month: {
         Args: { p_household: string; p_update_budgets: boolean }
