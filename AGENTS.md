@@ -17,3 +17,4 @@
 - Balance math lives in `src/lib/budget.ts` (integer cents) and is covered by tests. Why: UI and history must agree on positive/negative results.
 - NFC-e lookup runs server-side in `src/lib/nfce.functions.ts` (SEFAZ pages block browser CORS); HTML parsing is pure in `src/lib/nfce-parse.ts` with tests. Only Rio Grande do Sul (SVRS portal) is supported.
 - Signed-in pages live under `src/routes/_authenticated/_app/`, whose layout loads the household (or shows onboarding) and provides it via `useHousehold()`.
+- Spending is counted from `receipt_splits` (one row per source share, each with its own cycle month), not from `receipts.source_id`; write splits only via `add_receipt(p_splits)` / `set_receipt_splits`, which require the shares to sum to the total. Why: one receipt can be paid by several sources with different turnover days.

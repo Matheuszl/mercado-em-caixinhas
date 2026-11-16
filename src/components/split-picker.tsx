@@ -19,8 +19,10 @@ export function SplitPicker({
   onChange: (v: SplitMap) => void;
 }) {
   const ids = sources.map((s) => s.id);
+  const [a, b] = [sources[0]!, sources[1]!];
+  const last = sources[sources.length - 1]!;
   const used = Object.entries(value).filter(([, c]) => c > 0);
-  const whole = used.length === 1 && used[0][1] === totalC ? used[0][0] : null;
+  const whole = used.length === 1 && used[0]![1] === totalC ? used[0]![0] : null;
   const [custom, setCustom] = useState(!whole && used.length > 0);
   useEffect(() => {
     if (whole && custom && Object.keys(value).length <= 1) setCustom(false);
@@ -62,17 +64,17 @@ export function SplitPicker({
             <div className="mb-4">
               <input
                 type="range"
-                aria-label={`Parte de ${sources[0].name}`}
+                aria-label={`Parte de ${a.name}`}
                 min={0}
                 max={totalC}
                 step={totalC >= 1000 ? 50 : 1}
-                value={value[ids[0]] ?? 0}
-                onChange={(e) => { setCustom(true); onChange(setShare(ids, value, ids[0], Number(e.target.value), totalC)); }}
+                value={value[a.id] ?? 0}
+                onChange={(e) => { setCustom(true); onChange(setShare(ids, value, a.id, Number(e.target.value), totalC)); }}
                 className="w-full accent-primary"
               />
               <div className="font-num mt-1 flex justify-between text-[11px] text-muted-foreground">
-                <span>{sources[0].name} {pct(value[ids[0]] ?? 0, totalC)}</span>
-                <span>{sources[1].name} {pct(value[ids[1]] ?? 0, totalC)}</span>
+                <span>{a.name} {pct(value[a.id] ?? 0, totalC)}</span>
+                <span>{b.name} {pct(value[b.id] ?? 0, totalC)}</span>
               </div>
             </div>
           )}
@@ -89,7 +91,7 @@ export function SplitPicker({
             ))}
           </div>
           <p className="font-num mt-3 text-[11px] text-muted-foreground">
-            Digite o valor de um e o resto vai para {sources[sources.length - 1].name} · total {formatBRL(totalC / 100)}
+            Digite o valor de um e o resto vai para {last.name} · total {formatBRL(totalC / 100)}
           </p>
         </div>
       )}

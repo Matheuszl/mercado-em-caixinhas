@@ -44,6 +44,7 @@ function NotaDetalhe() {
   const queryClient = useQueryClient();
   const { household } = useHousehold();
   const [busy, setBusy] = useState(false);
+  const [split, setSplit] = useState<SplitMap | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["receipt", id],

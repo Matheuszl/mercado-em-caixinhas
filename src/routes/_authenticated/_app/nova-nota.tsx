@@ -123,7 +123,7 @@ function NovaNota() {
     setSaving(true);
     const d = draft.data;
     const parts = Object.entries(split).filter(([, c]) => c > 0);
-    const main = [...parts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? Object.keys(split)[0];
+    const main = [...parts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? Object.keys(split)[0]!;
     const { data: id, error } = await supabase.rpc("add_receipt", {
       p_household: household.id,
       p_source: main,

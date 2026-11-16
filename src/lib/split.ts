@@ -23,7 +23,7 @@ export function evenSplit(ids: string[], totalC: number): SplitMap {
  * (the last one in the list, or the first when editing the last). Clamped to [0, total].
  */
 export function setShare(ids: string[], current: SplitMap, editedId: string, valueC: number, totalC: number): SplitMap {
-  const restId = ids[ids.length - 1] === editedId ? ids[0] : ids[ids.length - 1];
+  const restId = (ids[ids.length - 1] === editedId ? ids[0] : ids[ids.length - 1]) ?? editedId;
   const others = ids.filter((id) => id !== editedId && id !== restId);
   const fixedC = others.reduce((acc, id) => acc + (current[id] ?? 0), 0);
   const v = Math.max(0, Math.min(valueC, totalC - fixedC));
